@@ -63,10 +63,43 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
   }
 }
 
-// Função para validar e limpar dados do usuário
+// Função para criar usuário mínimo seguro
+const createMinimalUser = (firebaseUser: any): User => {
+  return {
+    id: String(firebaseUser?.uid || ''),
+    email: String(firebaseUser?.email || ''),
+    name: String(firebaseUser?.displayName || 'Usuário'),
+    bio: '',
+    avatar: String(firebaseUser?.photoURL || ''),
+    level: 1,
+    experience: 0,
+    totalQuotes: 0,
+    totalFavorites: 0,
+    totalCustom: 0,
+    streak: 0,
+    createdAt: new Date().toISOString(),
+    lastLogin: new Date().toISOString(),
+    preferences: {
+      theme: 'light',
+      notifications: true,
+      autoBackup: true,
+      language: 'pt-BR',
+      privacy: 'private'
+    },
+    achievements: [],
+    goals: []
+  };
+};
+
+// Função para validar e limpar dados do usuário de forma mais rigorosa
 const validateAndCleanUserData = (data: any): User => {
   try {
-    // Garantir que todos os campos são serializáveis
+    // Se não há dados, retornar usuário mínimo
+    if (!data || typeof data !== 'object') {
+      throw new Error('Dados inválidos');
+    }
+
+    // Validar campos obrigatórios
     const cleanUser: User = {
       id: String(data?.id || ''),
       email: String(data?.email || ''),
@@ -111,12 +144,21 @@ const validateAndCleanUserData = (data: any): User => {
       })) : []
     };
 
-    // Testar serialização
-    JSON.stringify(cleanUser);
+    // Testar serialização rigorosamente
+    const serialized = JSON.stringify(cleanUser);
+    if (serialized.length > 1000000) { // Limite de 1MB
+      throw new Error('Dados muito grandes');
+    }
+
+    // Validar estrutura básica
+    if (!cleanUser.id || !cleanUser.email) {
+      throw new Error('Campos obrigatórios ausentes');
+    }
+
     return cleanUser;
   } catch (error) {
     console.error('Erro ao validar dados do usuário:', error);
-    // Retornar dados mínimos seguros
+    // Retornar usuário mínimo em caso de erro
     return {
       id: String(data?.id || ''),
       email: String(data?.email || ''),
@@ -147,45 +189,44 @@ const validateAndCleanUserData = (data: any): User => {
 function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     // Escutar mudanças de autenticação do Firebase
     const unsubscribe = firebaseAuthService.onAuthStateChanged(async (firebaseUser) => {
-      console.log('Auth state changed:', firebaseUser);
-      if (firebaseUser) {
-        try {
-          const userData = await firebaseAuthService.getUserData(firebaseUser.uid);
-          console.log('User data loaded:', userData);
-          
-          if (userData) {
-            // Validar e limpar dados antes de usar
-            const cleanUserData = validateAndCleanUserData(userData);
-            setCurrentUser(cleanUserData);
-          } else {
+      try {
+        console.log('Auth state changed:', firebaseUser);
+        
+        if (firebaseUser) {
+          try {
+            const userData = await firebaseAuthService.getUserData(firebaseUser.uid);
+            console.log('User data loaded:', userData);
+            
+            if (userData) {
+              // Validar e limpar dados antes de usar
+              const cleanUserData = validateAndCleanUserData(userData);
+              setCurrentUser(cleanUserData);
+            } else {
+              // Se não conseguir carregar dados, criar usuário básico
+              const fallbackUser = createMinimalUser(firebaseUser);
+              setCurrentUser(fallbackUser);
+            }
+          } catch (error) {
+            console.error('Erro ao buscar dados do usuário:', error);
             // Se não conseguir carregar dados, criar usuário básico
-            const fallbackUser = validateAndCleanUserData({
-              id: firebaseUser.uid,
-              email: firebaseUser.email,
-              name: firebaseUser.displayName,
-              avatar: firebaseUser.photoURL
-            });
+            const fallbackUser = createMinimalUser(firebaseUser);
             setCurrentUser(fallbackUser);
           }
-        } catch (error) {
-          console.error('Erro ao buscar dados do usuário:', error);
-          // Se não conseguir carregar dados, criar usuário básico
-          const fallbackUser = validateAndCleanUserData({
-            id: firebaseUser.uid,
-            email: firebaseUser.email,
-            name: firebaseUser.displayName,
-            avatar: firebaseUser.photoURL
-          });
-          setCurrentUser(fallbackUser);
+        } else {
+          setCurrentUser(null);
         }
-      } else {
+      } catch (error) {
+        console.error('Erro crítico na autenticação:', error);
+        setError('Erro na autenticação');
         setCurrentUser(null);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     return () => unsubscribe();
@@ -199,6 +240,26 @@ function App() {
       console.error('Erro ao fazer logout:', error);
     }
   };
+
+  // Se há erro crítico, mostrar tela de erro
+  if (error) {
+    return (
+      <div className="min-h-screen bg-neutral-50 dark:bg-neutral-900 flex items-center justify-center">
+        <div className="text-center p-6">
+          <h2 className="text-xl font-bold text-red-600 mb-4">Erro na Aplicação</h2>
+          <p className="text-neutral-600 dark:text-neutral-400 mb-4">
+            {error}
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+          >
+            Recarregar Página
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <ErrorBoundary>
