@@ -90,11 +90,16 @@ class FriendsService {
   }
 
   // Buscar usuários para descobrir
-  async getDiscoverUsers(userId: string, limitCount: number = 10): Promise<Friend[]> {
+  async getDiscoverUsers(userId: string, limitCount: number = 20): Promise<Friend[]> {
     try {
+      console.log('🔍 Iniciando busca de usuários para descobrir...')
+      console.log('👤 User ID:', userId)
+      
       // Buscar usuários que não são amigos e não têm solicitações pendentes
       const userFriendsDoc = await getDoc(doc(db, 'userFriends', userId))
       const userFriends = userFriendsDoc.exists() ? userFriendsDoc.data() as UserFriends : { friends: [], sentRequests: [], receivedRequests: [] }
+      
+      console.log('📋 Dados de amigos do usuário:', userFriends)
       
       const excludedUsers = new Set([
         userId,
@@ -103,35 +108,55 @@ class FriendsService {
         ...userFriends.receivedRequests
       ])
 
+      console.log('🚫 Usuários excluídos:', Array.from(excludedUsers))
+
+      // Buscar todos os usuários primeiro
       const usersQuery = query(
         collection(db, 'users'),
-        orderBy('totalQuotes', 'desc'),
-        limit(limitCount)
+        limit(50) // Buscar mais usuários para ter mais opções
       )
 
       const usersSnapshot = await getDocs(usersQuery)
+      console.log(`📊 Total de usuários encontrados na query: ${usersSnapshot.size}`)
+      
       const discoverUsers: Friend[] = []
 
       usersSnapshot.forEach(doc => {
         const userData = doc.data()
-        if (!excludedUsers.has(doc.id)) {
-          discoverUsers.push({
-            id: doc.id,
-            name: userData.name,
-            avatar: userData.avatar,
-            level: userData.level || 1,
-            experience: userData.experience || 0,
-            totalQuotes: userData.totalQuotes || 0,
-            totalFavorites: userData.totalFavorites || 0,
-            isOnline: this.isUserOnline(userData.lastSeen),
-            lastSeen: this.formatLastSeen(userData.lastSeen),
-            mutualFriends: 0, // Implementar lógica de amigos em comum
-            achievements: Object.keys(userData.achievements || {}).length
-          })
+        
+        // Verificar se o usuário deve ser excluído
+        if (excludedUsers.has(doc.id)) {
+          console.log(`❌ Usuário ${userData.name || doc.id} excluído (já é amigo ou tem solicitação)`)
+          return
         }
+        
+        // Verificar se o usuário tem nome válido
+        if (!userData.name || userData.name.trim() === '') {
+          console.log(`❌ Usuário ${doc.id} excluído (sem nome)`)
+          return
+        }
+        
+        console.log(`✅ Usuário ${userData.name} adicionado à lista de descoberta`)
+        discoverUsers.push({
+          id: doc.id,
+          name: userData.name,
+          avatar: userData.avatar || '',
+          level: userData.level || 1,
+          experience: userData.experience || 0,
+          totalQuotes: userData.totalQuotes || 0,
+          totalFavorites: userData.totalFavorites || 0,
+          isOnline: this.isUserOnline(userData.lastSeen || userData.lastLogin),
+          lastSeen: this.formatLastSeen(userData.lastSeen || userData.lastLogin),
+          mutualFriends: 0,
+          achievements: Array.isArray(userData.achievements) ? userData.achievements.length : 0
+        })
       })
 
-      return discoverUsers
+      console.log(`🎯 Encontrados ${discoverUsers.length} usuários para descobrir`)
+      console.log('👥 Usuários encontrados:', discoverUsers.map(u => ({ id: u.id, name: u.name })))
+      
+      // Retornar os primeiros usuários encontrados
+      return discoverUsers.slice(0, limitCount)
     } catch (error) {
       console.error('Erro ao buscar usuários para descobrir:', error)
       return []

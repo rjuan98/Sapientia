@@ -64,7 +64,7 @@ export interface Goal {
   title: string
   description: string
   target: number
-  current: number
+  progress: number
   type: 'quotes' | 'favorites' | 'custom' | 'streak'
   deadline?: string
   completed: boolean

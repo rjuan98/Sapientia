@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { User, Mail, Lock, Eye, EyeOff, ArrowLeft, BookOpen } from 'lucide-react'
+import { User, Mail, Lock, Eye, EyeOff, ArrowLeft, BookOpen, Check, X } from 'lucide-react'
 import { firebaseAuthService } from '../services/firebaseAuth'
 
 const Login = () => {
@@ -8,14 +8,26 @@ const Login = () => {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
+    confirmPassword: '',
     name: ''
   })
   const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
   const [error, setError] = useState('')
-  // const navigate = useNavigate() // Removido pois não está sendo usado
+
+  // Validação de senha
+  const passwordRequirements = {
+    minLength: formData.password.length >= 8,
+    hasNumber: /\d/.test(formData.password),
+    hasLetter: /[a-zA-Z]/.test(formData.password),
+    hasSpecial: /[!@#$%^&*(),.?":{}|<>]/.test(formData.password)
+  }
+
+  const isPasswordValid = Object.values(passwordRequirements).every(Boolean)
+  const passwordsMatch = formData.password === formData.confirmPassword || !formData.confirmPassword
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -31,20 +43,22 @@ const Login = () => {
         
         const user = await firebaseAuthService.login(formData.email, formData.password, rememberMe)
         console.log('Login successful:', user)
-        // Não precisamos navegar manualmente, o App.tsx vai detectar a mudança de auth
       } else {
         // Registro
         if (!formData.email || !formData.password || !formData.name) {
           throw new Error('Preencha todos os campos')
         }
         
-        if (formData.password.length < 6) {
-          throw new Error('A senha deve ter pelo menos 6 caracteres')
+        if (!isPasswordValid) {
+          throw new Error('A senha não atende aos requisitos de segurança')
+        }
+        
+        if (!passwordsMatch) {
+          throw new Error('As senhas não coincidem')
         }
         
         const user = await firebaseAuthService.register(formData.email, formData.password, formData.name)
         console.log('Register successful:', user)
-        // Não precisamos navegar manualmente, o App.tsx vai detectar a mudança de auth
       }
     } catch (err: any) {
       setError(err.message)
@@ -60,7 +74,6 @@ const Login = () => {
     try {
       const user = await firebaseAuthService.loginWithGoogle(rememberMe)
       console.log('Google login successful:', user)
-      // Não precisamos navegar manualmente, o App.tsx vai detectar a mudança de auth
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -181,7 +194,69 @@ const Login = () => {
                   {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
               </div>
+              
+              {/* Password Requirements (only for register) */}
+              {!isLogin && formData.password && (
+                <div className="mt-3 space-y-2">
+                  <p className="text-xs font-medium text-neutral-600">Requisitos de segurança:</p>
+                  <div className="space-y-1">
+                    <div className={`flex items-center space-x-2 text-xs ${passwordRequirements.minLength ? 'text-green-600' : 'text-neutral-500'}`}>
+                      {passwordRequirements.minLength ? <Check size={12} /> : <X size={12} />}
+                      <span>Mínimo 8 caracteres</span>
+                    </div>
+                    <div className={`flex items-center space-x-2 text-xs ${passwordRequirements.hasNumber ? 'text-green-600' : 'text-neutral-500'}`}>
+                      {passwordRequirements.hasNumber ? <Check size={12} /> : <X size={12} />}
+                      <span>Pelo menos 1 número</span>
+                    </div>
+                    <div className={`flex items-center space-x-2 text-xs ${passwordRequirements.hasLetter ? 'text-green-600' : 'text-neutral-500'}`}>
+                      {passwordRequirements.hasLetter ? <Check size={12} /> : <X size={12} />}
+                      <span>Pelo menos 1 letra</span>
+                    </div>
+                    <div className={`flex items-center space-x-2 text-xs ${passwordRequirements.hasSpecial ? 'text-green-600' : 'text-neutral-500'}`}>
+                      {passwordRequirements.hasSpecial ? <Check size={12} /> : <X size={12} />}
+                      <span>Pelo menos 1 caractere especial</span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
+
+            {/* Confirm Password Field (only for register) */}
+            {!isLogin && (
+              <div>
+                <label htmlFor="confirmPassword" className="block text-sm font-medium text-neutral-700 mb-2">
+                  Confirmar Senha
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400" size={20} />
+                  <input
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    id="confirmPassword"
+                    value={formData.confirmPassword}
+                    onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
+                    className={`w-full pl-10 pr-12 py-3 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                      formData.confirmPassword 
+                        ? passwordsMatch 
+                          ? 'border-green-300' 
+                          : 'border-red-300'
+                        : 'border-neutral-300'
+                    }`}
+                    placeholder="Confirme sua senha"
+                    required={!isLogin}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
+                  >
+                    {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
+                </div>
+                {formData.confirmPassword && !passwordsMatch && (
+                  <p className="mt-1 text-xs text-red-600">As senhas não coincidem</p>
+                )}
+              </div>
+            )}
 
             {/* Remember Me Checkbox (only for login) */}
             {isLogin && (
@@ -202,7 +277,7 @@ const Login = () => {
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || (!isLogin && (!isPasswordValid || !passwordsMatch))}
               className="w-full bg-primary-600 hover:bg-primary-700 text-white font-medium py-3 px-6 rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105"
             >
               {loading ? (
@@ -256,7 +331,7 @@ const Login = () => {
               onClick={() => {
                 setIsLogin(!isLogin)
                 setError('')
-                setFormData({ email: '', password: '', name: '' })
+                setFormData({ email: '', password: '', confirmPassword: '', name: '' })
                 setRememberMe(false)
               }}
               className="text-primary-600 hover:text-primary-700 font-medium transition-colors"

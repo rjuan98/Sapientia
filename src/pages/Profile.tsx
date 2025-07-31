@@ -9,6 +9,7 @@ import { Link } from 'react-router-dom'
 import { storageService } from '../services/storage'
 import { firebaseAuthService } from '../services/firebaseAuth'
 import { Quote, User as UserType } from '../types'
+import ProfilePhotoUpload from '../components/ProfilePhotoUpload'
 
 const Profile = () => {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'data' | 'settings' | 'achievements' | 'edit'>('dashboard')
@@ -228,13 +229,14 @@ const Profile = () => {
             <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-4 sm:space-y-0 sm:space-x-6">
               {/* Avatar */}
               <div className="relative">
-                <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full flex items-center justify-center text-white font-bold text-xl sm:text-2xl">
-                  {currentUser.avatar ? (
-                    <img src={currentUser.avatar} alt={currentUser.name} className="w-16 h-16 sm:w-20 sm:h-20 rounded-full" />
-                  ) : (
-                    currentUser.name.charAt(0).toUpperCase()
-                  )}
-                </div>
+                <ProfilePhotoUpload
+                  currentPhotoURL={currentUser.avatar}
+                  onPhotoUpdate={(photoURL) => {
+                    setCurrentUser({ ...currentUser, avatar: photoURL })
+                    setEditForm({ ...editForm, avatar: photoURL })
+                  }}
+                  userId={currentUser.id}
+                />
                 <div className="absolute -bottom-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 bg-green-500 rounded-full border-2 border-white dark:border-neutral-800"></div>
               </div>
 

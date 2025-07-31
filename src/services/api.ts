@@ -1,9 +1,46 @@
 import axios from 'axios'
 import { ApiQuote } from '../types'
 
-// Proxy CORS para desenvolvimento
-// Remover proxy CORS que não está funcionando
+// Configuração da API
 const API_URL = 'https://api.quotable.io'
+
+// Configuração do axios
+const apiClient = axios.create({
+  timeout: 10000,
+  headers: {
+    'Accept': 'application/json',
+    'Content-Type': 'application/json'
+  }
+})
+
+// Interceptor para logging de requisições
+apiClient.interceptors.request.use(
+  (config) => {
+    console.log(`🌐 Requisição: ${config.url}`)
+    return config
+  },
+  (error) => {
+    console.error('❌ Erro na requisição:', error.message)
+    return Promise.reject(error)
+  }
+)
+
+// Interceptor para logging de respostas
+apiClient.interceptors.response.use(
+  (response) => {
+    return response
+  },
+  (error) => {
+    console.error(`❌ Erro na resposta: ${error.message}`)
+    if (error.code === 'ERR_NAME_NOT_RESOLVED') {
+      console.error('🔍 Erro de DNS: Não foi possível resolver o domínio')
+    }
+    if (error.code === 'ERR_NETWORK') {
+      console.error('🌐 Erro de rede: Problema de conectividade')
+    }
+    return Promise.reject(error)
+  }
+)
 
 // Fallback extenso com centenas de citações de pensadores importantes
 const fallbackQuotes: ApiQuote[] = [
@@ -60,52 +97,176 @@ const fallbackQuotes: ApiQuote[] = [
   },
   {
     _id: 'marx-4',
-    content: "O trabalhador torna-se mais pobre quanto mais riqueza produz.",
+    content: "O trabalhador não tem pátria.",
     author: "Karl Marx",
-    tags: ["filosofia", "economia", "trabalho"],
+    tags: ["filosofia", "trabalho", "internacionalismo"],
+  },
+  {
+    _id: 'marx-5',
+    content: "A teoria se torna uma força material quando se apodera das massas.",
+    author: "Karl Marx",
+    tags: ["filosofia", "teoria", "prática"],
+  },
+
+  // Lenin
+  {
+    _id: 'lenin-1',
+    content: "Democracia para os ricos, democracia para os pobres - não é democracia.",
+    author: "Vladimir Lenin",
+    tags: ["política", "democracia", "classe"],
+  },
+  {
+    _id: 'lenin-2',
+    content: "A paz sem anexações e sem indenizações.",
+    author: "Vladimir Lenin",
+    tags: ["política", "paz", "internacionalismo"],
+  },
+  {
+    _id: 'lenin-3',
+    content: "Todo poder aos sovietes!",
+    author: "Vladimir Lenin",
+    tags: ["política", "revolução", "poder"],
+  },
+
+  // Sartre
+  {
+    _id: 'sartre-1',
+    content: "O inferno são os outros.",
+    author: "Jean-Paul Sartre",
+    tags: ["filosofia", "existencialismo", "relacionamentos"],
+  },
+  {
+    _id: 'sartre-2',
+    content: "O homem está condenado a ser livre.",
+    author: "Jean-Paul Sartre",
+    tags: ["filosofia", "liberdade", "existencialismo"],
+  },
+  {
+    _id: 'sartre-3',
+    content: "A existência precede a essência.",
+    author: "Jean-Paul Sartre",
+    tags: ["filosofia", "existencialismo", "essência"],
+  },
+
+  // Camus
+  {
+    _id: 'camus-1',
+    content: "O absurdo nasce da confrontação entre a busca humana e o silêncio irracional do mundo.",
+    author: "Albert Camus",
+    tags: ["filosofia", "absurdo", "existencialismo"],
+  },
+  {
+    _id: 'camus-2',
+    content: "Deve-se imaginar Sísifo feliz.",
+    author: "Albert Camus",
+    tags: ["filosofia", "absurdo", "felicidade"],
+  },
+  {
+    _id: 'camus-3',
+    content: "A revolta é a única reação filosófica.",
+    author: "Albert Camus",
+    tags: ["filosofia", "revolta", "resistência"],
+  },
+
+  // Foucault
+  {
+    _id: 'foucault-1',
+    content: "O poder não é algo que se possui, mas algo que se exerce.",
+    author: "Michel Foucault",
+    tags: ["filosofia", "poder", "política"],
+  },
+  {
+    _id: 'foucault-2',
+    content: "O saber é poder.",
+    author: "Michel Foucault",
+    tags: ["filosofia", "saber", "poder"],
+  },
+  {
+    _id: 'foucault-3',
+    content: "A verdade é uma coisa deste mundo.",
+    author: "Michel Foucault",
+    tags: ["filosofia", "verdade", "mundo"],
+  },
+
+  // Derrida
+  {
+    _id: 'derrida-1',
+    content: "Não há nada fora do texto.",
+    author: "Jacques Derrida",
+    tags: ["filosofia", "desconstrução", "texto"],
+  },
+  {
+    _id: 'derrida-2',
+    content: "A différance é o que torna o movimento da significação possível.",
+    author: "Jacques Derrida",
+    tags: ["filosofia", "desconstrução", "significação"],
+  },
+
+  // Deleuze
+  {
+    _id: 'deleuze-1',
+    content: "O desejo não falta de nada, não falta de objeto.",
+    author: "Gilles Deleuze",
+    tags: ["filosofia", "desejo", "psicanálise"],
+  },
+  {
+    _id: 'deleuze-2',
+    content: "Pensar é criar.",
+    author: "Gilles Deleuze",
+    tags: ["filosofia", "pensamento", "criação"],
+  },
+
+  // Žižek
+  {
+    _id: 'zizek-1',
+    content: "A ideologia não é uma ilusão da qual podemos nos livrar.",
+    author: "Slavoj Žižek",
+    tags: ["filosofia", "ideologia", "crítica"],
+  },
+  {
+    _id: 'zizek-2',
+    content: "A realidade é uma construção social.",
+    author: "Slavoj Žižek",
+    tags: ["filosofia", "realidade", "sociedade"],
+  },
+
+  // Chomsky
+  {
+    _id: 'chomsky-1',
+    content: "A linguagem é uma janela para a mente.",
+    author: "Noam Chomsky",
+    tags: ["linguística", "mente", "cognição"],
+  },
+  {
+    _id: 'chomsky-2',
+    content: "A propaganda é para a democracia o que a violência é para o totalitarismo.",
+    author: "Noam Chomsky",
+    tags: ["política", "propaganda", "democracia"],
   },
 
   // Platão
   {
-    _id: 'plato-1',
-    content: "Os homens são criaturas estranhas, numa mistura de orgulho e timidez.",
+    _id: 'platao-1',
+    content: "Os homens são criaturas estranhas, numa mistura de orgulho e covardia.",
     author: "Platão",
-    tags: ["filosofia", "psicologia", "natureza humana"],
+    tags: ["filosofia", "natureza humana", "psicologia"],
   },
   {
-    _id: 'plato-2',
-    content: "A admiração é o princípio da filosofia.",
+    _id: 'platao-2',
+    content: "Os homens são criaturas estranhas, numa mistura de orgulho e covardia.",
     author: "Platão",
-    tags: ["filosofia", "sabedoria", "conhecimento"],
-  },
-  {
-    _id: 'plato-3',
-    content: "Os homens são criaturas estranhas, numa mistura de orgulho e timidez.",
-    author: "Platão",
-    tags: ["filosofia", "psicologia", "natureza humana"],
-  },
-  {
-    _id: 'plato-4',
-    content: "A justiça é dar a cada um o que lhe pertence.",
-    author: "Platão",
-    tags: ["filosofia", "justiça", "ética"],
+    tags: ["filosofia", "natureza humana", "psicologia"],
   },
 
   // Sócrates
   {
     _id: 'socrates-1',
-    content: "Conhece-te a ti mesmo.",
+    content: "Só sei que nada sei.",
     author: "Sócrates",
-    tags: ["filosofia", "autoconhecimento", "sabedoria"],
+    tags: ["filosofia", "sabedoria", "humildade"],
   },
   {
     _id: 'socrates-2',
-    content: "Só sei que nada sei.",
-    author: "Sócrates",
-    tags: ["filosofia", "humildade", "conhecimento"],
-  },
-  {
-    _id: 'socrates-3',
     content: "A vida não examinada não vale a pena ser vivida.",
     author: "Sócrates",
     tags: ["filosofia", "vida", "reflexão"],
@@ -113,42 +274,30 @@ const fallbackQuotes: ApiQuote[] = [
 
   // Aristóteles
   {
-    _id: 'aristotle-1',
-    content: "O homem é por natureza um animal político.",
+    _id: 'aristoteles-1',
+    content: "O homem é um animal político.",
     author: "Aristóteles",
     tags: ["filosofia", "política", "natureza humana"],
   },
   {
-    _id: 'aristotle-2',
-    content: "A felicidade é a finalidade da vida.",
-    author: "Aristóteles",
-    tags: ["filosofia", "felicidade", "ética"],
-  },
-  {
-    _id: 'aristotle-3',
+    _id: 'aristoteles-2',
     content: "A virtude está no meio termo.",
     author: "Aristóteles",
-    tags: ["filosofia", "virtude", "ética"],
+    tags: ["filosofia", "virtude", "moderação"],
   },
 
   // Kant
   {
     _id: 'kant-1',
-    content: "Age de tal forma que a máxima da tua ação possa valer como princípio universal.",
+    content: "Age de tal forma que a máxima da tua ação se possa tornar lei universal.",
     author: "Immanuel Kant",
     tags: ["filosofia", "ética", "imperativo categórico"],
   },
   {
     _id: 'kant-2',
-    content: "O homem não é nada além daquilo que faz.",
+    content: "O homem é o fim da natureza.",
     author: "Immanuel Kant",
-    tags: ["filosofia", "ação", "existencialismo"],
-  },
-  {
-    _id: 'kant-3',
-    content: "A coragem é a resistência ao medo, domínio do medo, não a ausência do medo.",
-    author: "Immanuel Kant",
-    tags: ["filosofia", "coragem", "psicologia"],
+    tags: ["filosofia", "natureza", "humanidade"],
   },
 
   // Descartes
@@ -156,7 +305,7 @@ const fallbackQuotes: ApiQuote[] = [
     _id: 'descartes-1',
     content: "Penso, logo existo.",
     author: "René Descartes",
-    tags: ["filosofia", "existencialismo", "cogito"],
+    tags: ["filosofia", "cogito", "existência"],
   },
   {
     _id: 'descartes-2',
@@ -174,23 +323,23 @@ const fallbackQuotes: ApiQuote[] = [
   },
   {
     _id: 'rousseau-2',
-    content: "A natureza fez o homem feliz e bom, mas a sociedade deprava-o e torna-o miserável.",
+    content: "A propriedade é o roubo.",
     author: "Jean-Jacques Rousseau",
-    tags: ["filosofia", "natureza", "sociedade"],
+    tags: ["filosofia", "propriedade", "justiça"],
   },
 
   // Voltaire
   {
     _id: 'voltaire-1',
-    content: "Não concordo com uma palavra do que dizes, mas defenderei até a morte o direito de dizê-la.",
+    content: "Não concordo com uma palavra do que dizes, mas defenderei até a morte o teu direito de o dizeres.",
     author: "Voltaire",
     tags: ["filosofia", "liberdade", "tolerância"],
   },
   {
     _id: 'voltaire-2',
-    content: "A ignorância afirma ou nega dogmaticamente; a ciência duvida.",
+    content: "O melhor é o inimigo do bom.",
     author: "Voltaire",
-    tags: ["filosofia", "ciência", "ignorância"],
+    tags: ["filosofia", "perfeição", "pragmatismo"],
   },
 
   // Hobbes
@@ -202,29 +351,29 @@ const fallbackQuotes: ApiQuote[] = [
   },
   {
     _id: 'hobbes-2',
-    content: "A vida do homem é solitária, pobre, sórdida, brutal e curta.",
+    content: "A vida é solitária, pobre, desagradável, brutal e curta.",
     author: "Thomas Hobbes",
-    tags: ["filosofia", "vida", "natureza humana"],
+    tags: ["filosofia", "vida", "estado de natureza"],
   },
 
   // Locke
   {
     _id: 'locke-1',
-    content: "A mente é uma tábula rasa.",
+    content: "A mente é uma tábua rasa.",
     author: "John Locke",
-    tags: ["filosofia", "psicologia", "conhecimento"],
+    tags: ["filosofia", "mente", "conhecimento"],
   },
   {
     _id: 'locke-2',
-    content: "A liberdade do homem na sociedade consiste em não estar sujeito a nenhum poder legislativo senão aquele que foi estabelecido por consentimento.",
+    content: "A propriedade é um direito natural.",
     author: "John Locke",
-    tags: ["filosofia", "liberdade", "política"],
+    tags: ["filosofia", "propriedade", "direitos"],
   },
 
   // Hume
   {
     _id: 'hume-1',
-    content: "A razão é, e deve ser, escrava das paixões.",
+    content: "A razão é escrava das paixões.",
     author: "David Hume",
     tags: ["filosofia", "razão", "emoção"],
   },
@@ -240,284 +389,78 @@ const fallbackQuotes: ApiQuote[] = [
     _id: 'schopenhauer-1',
     content: "A vida oscila como um pêndulo entre a dor e o tédio.",
     author: "Arthur Schopenhauer",
-    tags: ["filosofia", "vida", "pessimismo"],
+    tags: ["filosofia", "vida", "sofrimento"],
   },
   {
     _id: 'schopenhauer-2',
-    content: "A compaixão é a base de toda moralidade.",
+    content: "A compaixão é a base da moralidade.",
     author: "Arthur Schopenhauer",
-    tags: ["filosofia", "compaixão", "moral"],
+    tags: ["filosofia", "compaixão", "moralidade"],
   },
 
   // Kierkegaard
   {
     _id: 'kierkegaard-1',
-    content: "A vida só pode ser compreendida olhando-se para trás, mas deve ser vivida olhando-se para frente.",
+    content: "A vida só pode ser compreendida olhando para trás, mas deve ser vivida olhando para frente.",
     author: "Søren Kierkegaard",
-    tags: ["filosofia", "vida", "existencialismo"],
+    tags: ["filosofia", "vida", "tempo"],
   },
   {
     _id: 'kierkegaard-2',
-    content: "A angústia é a vertigem da liberdade.",
+    content: "A fé é o salto no escuro.",
     author: "Søren Kierkegaard",
-    tags: ["filosofia", "angústia", "liberdade"],
-  },
-
-  // Sartre
-  {
-    _id: 'sartre-1',
-    content: "O inferno são os outros.",
-    author: "Jean-Paul Sartre",
-    tags: ["filosofia", "existencialismo", "sociedade"],
-  },
-  {
-    _id: 'sartre-2',
-    content: "O homem está condenado a ser livre.",
-    author: "Jean-Paul Sartre",
-    tags: ["filosofia", "liberdade", "existencialismo"],
-  },
-
-  // Camus
-  {
-    _id: 'camus-1',
-    content: "O absurdo nasce da confrontação entre a busca humana e o silêncio irracional do mundo.",
-    author: "Albert Camus",
-    tags: ["filosofia", "absurdo", "existencialismo"],
-  },
-  {
-    _id: 'camus-2',
-    content: "Deve-se imaginar Sísifo feliz.",
-    author: "Albert Camus",
-    tags: ["filosofia", "felicidade", "absurdo"],
-  },
-
-  // Foucault
-  {
-    _id: 'foucault-1',
-    content: "O conhecimento é poder.",
-    author: "Michel Foucault",
-    tags: ["filosofia", "poder", "conhecimento"],
-  },
-  {
-    _id: 'foucault-2',
-    content: "Onde há poder, há resistência.",
-    author: "Michel Foucault",
-    tags: ["filosofia", "poder", "resistência"],
-  },
-
-  // Derrida
-  {
-    _id: 'derrida-1',
-    content: "Não há nada fora do texto.",
-    author: "Jacques Derrida",
-    tags: ["filosofia", "desconstrução", "texto"],
-  },
-
-  // Deleuze
-  {
-    _id: 'deleuze-1',
-    content: "O desejo não falta de nada, ele não falta de objeto.",
-    author: "Gilles Deleuze",
-    tags: ["filosofia", "desejo", "psicologia"],
-  },
-
-  // Zizek
-  {
-    _id: 'zizek-1',
-    content: "A ideologia não é uma ilusão que esconde a realidade, mas a realidade que esconde que não há realidade.",
-    author: "Slavoj Žižek",
-    tags: ["filosofia", "ideologia", "realidade"],
-  },
-
-  // Chomsky
-  {
-    _id: 'chomsky-1',
-    content: "Se você assume que não há esperança, você garante que não há esperança.",
-    author: "Noam Chomsky",
-    tags: ["filosofia", "esperança", "ação"],
-  },
-
-  // Literatura - Machado de Assis
-  {
-    _id: 'machado-1',
-    content: "A vida é cheia de obrigações que a gente cumpre, ou por medo, ou por força de hábito.",
-    author: "Machado de Assis",
-    tags: ["literatura", "vida", "obrigações"],
-  },
-  {
-    _id: 'machado-2',
-    content: "Não tive filhos, não transmiti a nenhuma criatura o legado da nossa miséria.",
-    author: "Machado de Assis",
-    tags: ["literatura", "vida", "legado"],
-  },
-
-  // Literatura - Fernando Pessoa
-  {
-    _id: 'pessoa-1',
-    content: "O poeta é um fingidor. Finge tão completamente que chega a fingir que é dor a dor que deveras sente.",
-    author: "Fernando Pessoa",
-    tags: ["literatura", "poesia", "arte"],
-  },
-  {
-    _id: 'pessoa-2',
-    content: "Tudo vale a pena se a alma não é pequena.",
-    author: "Fernando Pessoa",
-    tags: ["literatura", "alma", "valor"],
-  },
-
-  // Literatura - Clarice Lispector
-  {
-    _id: 'clarice-1',
-    content: "Liberdade é pouco. O que eu desejo ainda não tem nome.",
-    author: "Clarice Lispector",
-    tags: ["literatura", "liberdade", "desejo"],
-  },
-
-  // Literatura - Guimarães Rosa
-  {
-    _id: 'guimaraes-1',
-    content: "O correr da vida embrulha tudo. A vida é assim: esquenta e esfria, aperta e daí afrouxa, sossega e depois desinquieta.",
-    author: "João Guimarães Rosa",
-    tags: ["literatura", "vida", "movimento"],
-  },
-
-  // Psicologia - Freud
-  {
-    _id: 'freud-1',
-    content: "O sonho é a estrada real para o inconsciente.",
-    author: "Sigmund Freud",
-    tags: ["psicologia", "inconsciente", "sonhos"],
-  },
-  {
-    _id: 'freud-2',
-    content: "Às vezes um charuto é apenas um charuto.",
-    author: "Sigmund Freud",
-    tags: ["psicologia", "simplicidade", "humor"],
-  },
-
-  // Psicologia - Jung
-  {
-    _id: 'jung-1',
-    content: "Quem olha para fora sonha, quem olha para dentro acorda.",
-    author: "Carl Jung",
-    tags: ["psicologia", "autoconhecimento", "consciência"],
-  },
-
-  // Ciência - Einstein
-  {
-    _id: 'einstein-1',
-    content: "A imaginação é mais importante que o conhecimento.",
-    author: "Albert Einstein",
-    tags: ["ciência", "imaginação", "conhecimento"],
-  },
-  {
-    _id: 'einstein-2',
-    content: "A vida é como andar de bicicleta. Para manter o equilíbrio, você deve continuar em movimento.",
-    author: "Albert Einstein",
-    tags: ["ciência", "vida", "movimento"],
-  },
-
-  // Ciência - Hawking
-  {
-    _id: 'hawking-1',
-    content: "A maior inimiga do conhecimento não é a ignorância, é a ilusão do conhecimento.",
-    author: "Stephen Hawking",
-    tags: ["ciência", "conhecimento", "ignorância"],
-  },
-
-  // Arte - Picasso
-  {
-    _id: 'picasso-1',
-    content: "A arte é a mentira que nos permite conhecer a verdade.",
-    author: "Pablo Picasso",
-    tags: ["arte", "verdade", "criação"],
-  },
-
-  // Música - Beethoven
-  {
-    _id: 'beethoven-1',
-    content: "A música é a revelação mais alta que qualquer filosofia.",
-    author: "Ludwig van Beethoven",
-    tags: ["música", "filosofia", "arte"],
-  },
-
-  // Política - Mandela
-  {
-    _id: 'mandela-1',
-    content: "A educação é a arma mais poderosa que você pode usar para mudar o mundo.",
-    author: "Nelson Mandela",
-    tags: ["política", "educação", "mudança"],
-  },
-
-  // Política - Gandhi
-  {
-    _id: 'gandhi-1',
-    content: "Seja a mudança que você quer ver no mundo.",
-    author: "Mahatma Gandhi",
-    tags: ["política", "mudança", "ação"],
-  },
-
-  // Sociologia - Durkheim
-  {
-    _id: 'durkheim-1',
-    content: "A sociedade não é simplesmente a soma de indivíduos, mas um sistema formado pela associação deles.",
-    author: "Émile Durkheim",
-    tags: ["sociologia", "sociedade", "indivíduo"],
-  },
-
-  // Sociologia - Weber
-  {
-    _id: 'weber-1',
-    content: "A burocracia é a forma mais eficiente de organização humana.",
-    author: "Max Weber",
-    tags: ["sociologia", "burocracia", "organização"],
+    tags: ["filosofia", "fé", "existencialismo"],
   }
 ]
 
-// Função para gerar citação aleatória local quando API falha
 const generateRandomLocalQuote = (): ApiQuote => {
-  // Usar o fallbackQuotes em vez do array pequeno
   const randomIndex = Math.floor(Math.random() * fallbackQuotes.length)
-  const randomQuote = fallbackQuotes[randomIndex]
-  
-  return {
-    _id: `local-${Date.now()}-${randomIndex}`,
-    content: randomQuote.content,
-    author: randomQuote.author,
-    tags: randomQuote.tags,
-  }
+  return fallbackQuotes[randomIndex]
 }
 
-const quoteApi = {
-  // Testar conexão com a API (simplificado)
+// API Service simplificado
+export const apiService = {
+  // Testar conectividade básica
   async testConnection(): Promise<boolean> {
     try {
-      const response = await axios.get(`${API_URL}/random`, { timeout: 5000 })
-      return response.status === 200
+      const response = await fetch('https://jsonplaceholder.typicode.com/posts/1', {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json'
+        },
+        signal: AbortSignal.timeout(5000)
+      })
+      return response.ok
     } catch (error) {
-      console.warn('API não disponível, usando citações locais')
+      console.error('❌ Erro no teste de conectividade:', error)
       return false
     }
   },
 
-  // Buscar citação aleatória da API
+  // Obter citação aleatória
   async getRandomQuote(): Promise<ApiQuote> {
-    try {
-      // Usar proxy CORS para contornar o problema
-      const response = await axios.get(`${API_URL}/random`, { timeout: 10000 })
-      console.log('Citação da API:', response.data)
-      return response.data
-    } catch (error) {
-      console.warn('API não disponível, usando citação local')
+    const hasConnection = await this.testConnection()
+    if (!hasConnection) {
+      console.log('❌ Sem conectividade, usando citação local')
       return generateRandomLocalQuote()
     }
+
+    try {
+      const response = await apiClient.get(`${API_URL}/random`)
+      if (response.data) {
+      return response.data
+      }
+    } catch (error) {
+      console.warn('❌ API não disponível, usando citação local')
+    }
+
+    return generateRandomLocalQuote()
   },
 
-  // Buscar citações por autor na API
+  // Buscar citações por autor
   async getQuotesByAuthor(author: string): Promise<ApiQuote[]> {
     try {
-      const response = await axios.get(`${API_URL}/quotes?author=${encodeURIComponent(author)}`, { timeout: 10000 })
-      console.log('Resultados por autor:', response.data.results?.length || 0)
+      const response = await apiClient.get(`${API_URL}/quotes?author=${encodeURIComponent(author)}`)
       return response.data.results || []
     } catch (error) {
       console.warn('API não disponível para busca por autor')
@@ -525,10 +468,10 @@ const quoteApi = {
     return []
   },
 
-  // Buscar autores na API
+  // Buscar autores
   async getAuthors(): Promise<any[]> {
     try {
-      const response = await axios.get(`${API_URL}/authors`, { timeout: 10000 })
+      const response = await apiClient.get(`${API_URL}/authors`)
       return response.data.results || []
     } catch (error) {
       console.warn('API não disponível para busca de autores')
@@ -536,11 +479,11 @@ const quoteApi = {
     return []
   },
 
-  // Buscar citações por tags na API
+  // Buscar citações por tags
   async getQuotesByTags(tags: string[]): Promise<ApiQuote[]> {
     try {
       const tagsParam = tags.join('|')
-      const response = await axios.get(`${API_URL}/quotes?tags=${encodeURIComponent(tagsParam)}`, { timeout: 10000 })
+      const response = await apiClient.get(`${API_URL}/quotes?tags=${encodeURIComponent(tagsParam)}`)
       return response.data.results || []
     } catch (error) {
       console.warn('API não disponível para busca por tags')
@@ -548,40 +491,86 @@ const quoteApi = {
     return []
   },
 
-  // Buscar citações por termo de busca na API
+  // Buscar citações por termo de busca
   async searchQuotes(query: string): Promise<ApiQuote[]> {
+    const hasConnection = await this.testConnection()
+    if (!hasConnection) {
+      return this.searchLocalQuotes(query)
+    }
+
     try {
-      console.log('Buscando na API:', query)
-      
-      // Buscar por conteúdo na API
-      const contentResponse = await axios.get(`${API_URL}/quotes?query=${encodeURIComponent(query)}`, { timeout: 10000 })
-      const contentResults = contentResponse.data.results || []
-      console.log('Resultados por conteúdo:', contentResults.length)
-      
-      // Buscar por autor na API
-      const authorResults = await this.getQuotesByAuthor(query)
-      console.log('Resultados por autor:', authorResults.length)
-      
-      // Combinar resultados e remover duplicatas
-      const allResults = [...contentResults, ...authorResults]
-      const uniqueResults = allResults.filter((quote, index, self) => 
-        index === self.findIndex(q => q._id === quote._id)
-      )
-      
-      console.log('Total de resultados únicos:', uniqueResults.length)
-      return uniqueResults
+      const response = await apiClient.get(`${API_URL}/quotes?query=${encodeURIComponent(query)}`)
+      const results = response.data.results || []
+      if (results.length > 0) {
+        return results
+      }
     } catch (error) {
-      console.warn('API não disponível para busca')
+      console.warn('❌ API não disponível para busca')
+    }
+
+    return this.searchLocalQuotes(query)
+  },
+
+  // Busca local nas citações de fallback
+  searchLocalQuotes(query: string): ApiQuote[] {
+    const searchTerm = query.toLowerCase()
+    const results = fallbackQuotes.filter(quote => 
+      this.matchRelatedKeywords(searchTerm, quote.content, quote.author, quote.tags)
+    )
+    
+    console.log(`🔍 Encontrados ${results.length} resultados locais para "${query}"`)
+    return results
+  },
+
+  // Função para mapear termos relacionados
+  matchRelatedKeywords(searchTerm: string, content: string, author: string, tags: string[]): boolean {
+    const contentLower = content.toLowerCase()
+    const authorLower = author.toLowerCase()
+    const tagsLower = tags.map(tag => tag.toLowerCase())
+    
+    // Mapeamento de termos relacionados
+    const keywordMap: { [key: string]: string[] } = {
+      'nietzsche': ['nietzsche', 'friedrich', 'filosofia', 'moral', 'vida', 'superação'],
+      'marx': ['marx', 'karl', 'política', 'classe', 'revolução', 'capitalismo'],
+      'lenin': ['lenin', 'vladimir', 'revolução', 'soviets', 'comunismo'],
+      'sartre': ['sartre', 'jean-paul', 'existencialismo', 'liberdade'],
+      'camus': ['camus', 'albert', 'absurdo', 'existencialismo'],
+      'foucault': ['foucault', 'michel', 'poder', 'saber'],
+      'derrida': ['derrida', 'jacques', 'desconstrução'],
+      'deleuze': ['deleuze', 'gilles', 'desejo'],
+      'zizek': ['žižek', 'slavoj', 'ideologia'],
+      'chomsky': ['chomsky', 'noam', 'linguística'],
+      'platão': ['platão', 'platao', 'sócrates', 'filosofia'],
+      'aristóteles': ['aristóteles', 'aristoteles', 'virtude'],
+      'kant': ['kant', 'immanuel', 'ética'],
+      'descartes': ['descartes', 'rené', 'cogito'],
+      'rousseau': ['rousseau', 'jean-jacques', 'liberdade'],
+      'voltaire': ['voltaire', 'tolerância'],
+      'hobbes': ['hobbes', 'thomas', 'estado'],
+      'locke': ['locke', 'john', 'propriedade'],
+      'hume': ['hume', 'david', 'razão'],
+      'schopenhauer': ['schopenhauer', 'arthur', 'vida'],
+      'kierkegaard': ['kierkegaard', 'søren', 'fé']
     }
     
-    // Se API falhar, retornar citações locais baseadas na busca
-    const localResults = fallbackQuotes.filter(quote => 
-      quote.content.toLowerCase().includes(query.toLowerCase()) ||
-      quote.author.toLowerCase().includes(query.toLowerCase()) ||
-      quote.tags.some(tag => tag.toLowerCase().includes(query.toLowerCase()))
-    )
-    return localResults
+    // Verificar correspondência direta
+    if (contentLower.includes(searchTerm) || 
+        authorLower.includes(searchTerm) || 
+        tagsLower.some(tag => tag.includes(searchTerm))) {
+      return true
+    }
+    
+    // Verificar termos relacionados
+    for (const [key, relatedTerms] of Object.entries(keywordMap)) {
+      if (searchTerm.includes(key) || key.includes(searchTerm)) {
+        return relatedTerms.some(term => 
+          contentLower.includes(term) || 
+          authorLower.includes(term) || 
+          tagsLower.some(tag => tag.includes(term))
+        )
+      }
+    }
+    
+    return false
   }
-}
-
-export { quoteApi } 
+} 

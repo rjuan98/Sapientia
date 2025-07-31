@@ -1,33 +1,164 @@
 import { Quote } from '../types'
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
+import { storage } from '../config/firebase'
 
 const STORAGE_KEYS = {
   QUOTES: 'quotes',
   USER: 'user'
 }
 
-const storageService = {
+class StorageService {
+  // Upload de foto de perfil
+  async uploadProfilePhoto(userId: string, file: File): Promise<string> {
+    try {
+      // Validar tipo de arquivo
+      if (!file.type.startsWith('image/')) {
+        throw new Error('Apenas arquivos de imagem são permitidos')
+      }
+
+      // Validar tamanho (máximo 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        throw new Error('A imagem deve ter no máximo 5MB')
+      }
+
+      // Criar referência para o arquivo
+      const storageRef = ref(storage, `profile-photos/${userId}/${Date.now()}_${file.name}`)
+      
+      // Upload do arquivo
+      const snapshot = await uploadBytes(storageRef, file)
+      
+      // Obter URL de download
+      const downloadURL = await getDownloadURL(snapshot.ref)
+      
+      console.log('Foto de perfil enviada com sucesso:', downloadURL)
+      return downloadURL
+    } catch (error: any) {
+      console.error('Erro ao enviar foto de perfil:', error)
+      throw new Error('Erro ao enviar foto de perfil: ' + error.message)
+    }
+  }
+
+  // Deletar foto de perfil antiga
+  async deleteProfilePhoto(userId: string, photoURL: string): Promise<void> {
+    try {
+      if (!photoURL || photoURL.includes('default')) {
+        return // Não deletar fotos padrão
+      }
+
+      // Extrair o caminho do arquivo da URL
+      const urlParts = photoURL.split('/')
+      const fileName = urlParts[urlParts.length - 1]
+      const fileRef = ref(storage, `profile-photos/${userId}/${fileName}`)
+      
+      await deleteObject(fileRef)
+      console.log('Foto de perfil antiga deletada')
+    } catch (error: any) {
+      console.error('Erro ao deletar foto de perfil:', error)
+      // Não lançar erro pois não é crítico
+    }
+  }
+
+  // Upload de imagem para citações
+  async uploadQuoteImage(userId: string, quoteId: string, file: File): Promise<string> {
+    try {
+      // Validar tipo de arquivo
+      if (!file.type.startsWith('image/')) {
+        throw new Error('Apenas arquivos de imagem são permitidos')
+      }
+
+      // Validar tamanho (máximo 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        throw new Error('A imagem deve ter no máximo 10MB')
+      }
+
+      // Criar referência para o arquivo
+      const storageRef = ref(storage, `quote-images/${userId}/${quoteId}/${Date.now()}_${file.name}`)
+      
+      // Upload do arquivo
+      const snapshot = await uploadBytes(storageRef, file)
+      
+      // Obter URL de download
+      const downloadURL = await getDownloadURL(snapshot.ref)
+      
+      console.log('Imagem da citação enviada com sucesso:', downloadURL)
+      return downloadURL
+    } catch (error: any) {
+      console.error('Erro ao enviar imagem da citação:', error)
+      throw new Error('Erro ao enviar imagem da citação: ' + error.message)
+    }
+  }
+
+  // Deletar imagem de citação
+  async deleteQuoteImage(imageURL: string): Promise<void> {
+    try {
+      if (!imageURL) {
+        return
+      }
+
+      // Extrair o caminho do arquivo da URL
+      const urlParts = imageURL.split('/')
+      const fileName = urlParts[urlParts.length - 1]
+      const fileRef = ref(storage, `quote-images/${fileName}`)
+      
+      await deleteObject(fileRef)
+      console.log('Imagem da citação deletada')
+    } catch (error: any) {
+      console.error('Erro ao deletar imagem da citação:', error)
+      // Não lançar erro pois não é crítico
+    }
+  }
+
+  // Obter URL de imagem padrão
+  getDefaultProfilePhoto(): string {
+    return 'https://via.placeholder.com/150x150/cccccc/666666?text=Usuário'
+  }
+
+  // Validar arquivo de imagem
+  validateImageFile(file: File): { isValid: boolean; error?: string } {
+    // Verificar tipo
+    if (!file.type.startsWith('image/')) {
+      return { isValid: false, error: 'Apenas arquivos de imagem são permitidos' }
+    }
+
+    // Verificar tamanho (máximo 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      return { isValid: false, error: 'A imagem deve ter no máximo 5MB' }
+    }
+
+    // Verificar extensão
+    const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp']
+    const fileName = file.name.toLowerCase()
+    const hasValidExtension = allowedExtensions.some(ext => fileName.endsWith(ext))
+    
+    if (!hasValidExtension) {
+      return { isValid: false, error: 'Formato de imagem não suportado. Use JPG, PNG, GIF ou WebP' }
+    }
+
+    return { isValid: true }
+  }
+
   // Salvar citações
   saveQuotes(quotes: Quote[]): void {
     localStorage.setItem(STORAGE_KEYS.QUOTES, JSON.stringify(quotes))
-  },
+  }
 
   // Carregar citações
   loadQuotes(): Quote[] {
     const quotes = localStorage.getItem(STORAGE_KEYS.QUOTES)
     return quotes ? JSON.parse(quotes) : []
-  },
+  }
 
   // Obter citações (alias para loadQuotes)
   getQuotes(): Quote[] {
     return this.loadQuotes()
-  },
+  }
 
   // Adicionar nova citação
   addQuote(quote: Quote): void {
     const quotes = this.loadQuotes()
     quotes.push(quote)
     this.saveQuotes(quotes)
-  },
+  }
 
   // Atualizar citação existente
   updateQuote(id: string, updates: Partial<Quote>): void {
@@ -37,14 +168,14 @@ const storageService = {
       quotes[index] = { ...quotes[index], ...updates }
       this.saveQuotes(quotes)
     }
-  },
+  }
 
   // Remover citação
   removeQuote(id: string): void {
     const quotes = this.loadQuotes()
     const filteredQuotes = quotes.filter(q => q.id !== id)
     this.saveQuotes(filteredQuotes)
-  },
+  }
 
   // Limpar duplicações (versão segura que preserva favoritas)
   removeDuplicates(): void {
@@ -78,18 +209,18 @@ const storageService = {
     }
     
     this.saveQuotes(uniqueQuotes)
-  },
+  }
 
   // Salvar dados do usuário
   saveUser(user: any): void {
     localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user))
-  },
+  }
 
   // Carregar dados do usuário
   loadUser(): any {
     const user = localStorage.getItem(STORAGE_KEYS.USER)
     return user ? JSON.parse(user) : null
-  },
+  }
 
   // Fazer backup das citações
   backupQuotes(): void {
@@ -99,7 +230,7 @@ const storageService = {
       localStorage.setItem(backupKey, JSON.stringify(quotes))
       console.log(`Backup criado: ${backupKey} com ${quotes.length} citações`)
     }
-  },
+  }
 
   // Restaurar de backup
   restoreFromBackup(): Quote[] | null {
@@ -126,7 +257,7 @@ const storageService = {
       }
     }
     return null
-  },
+  }
 
   // Verificar e corrigir inconsistências nas citações
   validateAndFixQuotes(): Quote[] {
@@ -162,7 +293,7 @@ const storageService = {
     }
     
     return fixedQuotes
-  },
+  }
 
   // Obter estatísticas das citações
   getQuotesStats(): { total: number, favorites: number, custom: number, recent: number } {
@@ -179,4 +310,4 @@ const storageService = {
   }
 }
 
-export { storageService } 
+export const storageService = new StorageService() 

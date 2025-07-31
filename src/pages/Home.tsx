@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
-import { Search, Filter, Heart, Copy, Share2, RefreshCw, Check, AlertCircle, Trash2, Cloud, Database, Trophy } from 'lucide-react'
-import { quoteApi } from '../services/api'
-import { storageService } from '../services/storage'
+import { Search, Filter, Heart, Copy, Share2, RefreshCw, Check, AlertCircle, Trash2, Cloud, Database, Trophy, X } from 'lucide-react'
+import { apiService } from '../services/api'
 import { Quote, ApiQuote } from '../types'
 import { useQuotes } from '../hooks/useQuotes'
 import { firebaseAuthService } from '../services/firebaseAuth'
@@ -44,12 +43,14 @@ const Home = () => {
       setLoading(true)
       
       // Carregar citação do dia
-      const dailyQuote = await quoteApi.getRandomQuote()
+      const dailyQuote = await apiService.getRandomQuote()
       setQuoteOfDay(dailyQuote)
       
       // Verificar se há citações no localStorage para migrar
       if (currentUser && migrationStatus === 'idle') {
-        const localQuotes = storageService.getQuotes()
+        // Usar localStorage diretamente para migração
+        const localQuotesData = localStorage.getItem('sapientia_quotes')
+        const localQuotes = localQuotesData ? JSON.parse(localQuotesData) : []
         if (localQuotes.length > 0 && savedQuotes.length === 0) {
           setMigrationStatus('migrating')
           try {
@@ -74,7 +75,7 @@ const Home = () => {
   const handleRefreshDaily = async () => {
     try {
       setIsRefreshingQuote(true)
-      const newQuote = await quoteApi.getRandomQuote()
+      const newQuote = await apiService.getRandomQuote()
       
       // Animação de entrada para nova citação
       setQuoteOfDay(null) // Limpar temporariamente
@@ -155,7 +156,7 @@ const Home = () => {
     try {
       if (searchFilter === 'api' || searchFilter === 'all') {
         // Buscar na API
-        const results = await quoteApi.searchQuotes(searchTerm)
+        const results = await apiService.searchQuotes(searchTerm)
         setApiSearchResults(results)
 
         if (results.length === 0) {
@@ -172,7 +173,7 @@ const Home = () => {
         setSearchError(savedResults.length === 0 ? 'Nenhuma citação salva encontrada.' : null)
       } else {
         // Buscar por categoria específica
-        const categoryResults = await quoteApi.searchQuotes(searchTerm)
+        const categoryResults = await apiService.searchQuotes(searchTerm)
         const filteredByCategory = categoryResults.filter(quote => 
           quote.tags.some(tag => tag.toLowerCase().includes(searchFilter))
         )
@@ -308,7 +309,7 @@ const Home = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
+      <div className="min-h-screen bg-neutral-50 dark:bg-neutral-900 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
           <p className="mt-4 text-neutral-600">Carregando...</p>
@@ -425,35 +426,38 @@ const Home = () => {
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                  className="w-full pl-10 sm:pl-12 pr-4 py-3 sm:py-4 border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent text-base sm:text-lg"
+                  className="w-full pl-10 sm:pl-12 pr-12 py-3 sm:py-4 border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent text-base sm:text-lg"
                 />
+                {searchTerm && (
+                  <button
+                    onClick={() => setSearchTerm('')}
+                    className="absolute right-3 sm:right-4 top-1/2 transform -translate-y-1/2 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
+                  >
+                    <X size={18} />
+                  </button>
+                )}
               </div>
 
-              {/* Filtros */}
+              {/* Filtros - Reduzidos e diferenciados */}
               <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
                 <div className="flex items-center space-x-2">
                   <Filter size={16} className="text-neutral-500 dark:text-neutral-400" />
-                  <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Filtrar por:</span>
+                  <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Fonte:</span>
                 </div>
 
                 <div className="flex flex-wrap gap-2">
                   {[
-                    { value: 'all', label: 'Tudo' },
-                    { value: 'saved', label: 'Salvas' },
-                    { value: 'api', label: 'API' },
-                    { value: 'philosophy', label: 'Filosofia' },
-                    { value: 'literature', label: 'Literatura' },
-                    { value: 'psychology', label: 'Psicologia' },
-                    { value: 'science', label: 'Ciência' },
-                    { value: 'politics', label: 'Política' }
+                    { value: 'all', label: 'Todas', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300' },
+                    { value: 'saved', label: 'Minhas', color: 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-300' },
+                    { value: 'api', label: 'API', color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/20 dark:text-purple-300' }
                   ].map(filter => (
                     <button
                       key={filter.value}
                       onClick={() => setSearchFilter(filter.value as any)}
                       className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all duration-200 ${
                         searchFilter === filter.value
-                          ? 'bg-primary-600 text-white scale-105'
-                          : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-600 hover:scale-105'
+                          ? `${filter.color} scale-105`
+                          : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-600'
                       }`}
                     >
                       {filter.label}
@@ -461,13 +465,45 @@ const Home = () => {
                   ))}
                 </div>
 
+                {/* Botão de busca - mais proeminente */}
                 <button
                   onClick={handleSearch}
                   disabled={isSearching}
-                  className="w-full sm:w-auto bg-primary-600 hover:bg-primary-700 text-white px-6 sm:px-8 py-2 sm:py-3 rounded-xl font-medium transition-all duration-200 disabled:opacity-50 hover:scale-105"
+                  className="w-full sm:w-auto bg-primary-600 hover:bg-primary-700 text-white px-6 sm:px-8 py-2 sm:py-3 rounded-xl font-medium transition-all duration-200 disabled:opacity-50 hover:scale-105 shadow-sm"
                 >
                   {isSearching ? 'Buscando...' : 'Buscar'}
                 </button>
+              </div>
+
+              {/* Categorias - Ocultas por padrão, expandem ao clicar */}
+              <div className="border-t border-neutral-200 dark:border-neutral-600 pt-4">
+                <details className="group">
+                  <summary className="cursor-pointer text-sm font-medium text-neutral-600 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 transition-colors">
+                    Categorias específicas
+                  </summary>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {[
+                      { value: 'philosophy', label: 'Filosofia', icon: '🧠' },
+                      { value: 'literature', label: 'Literatura', icon: '📚' },
+                      { value: 'psychology', label: 'Psicologia', icon: '💭' },
+                      { value: 'science', label: 'Ciência', icon: '🔬' },
+                      { value: 'politics', label: 'Política', icon: '🏛️' }
+                    ].map(filter => (
+                      <button
+                        key={filter.value}
+                        onClick={() => setSearchFilter(filter.value as any)}
+                        className={`px-3 py-2 rounded-lg text-xs font-medium transition-all duration-200 flex items-center space-x-1 ${
+                          searchFilter === filter.value
+                            ? 'bg-primary-600 text-white scale-105'
+                            : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-600'
+                        }`}
+                      >
+                        <span>{filter.icon}</span>
+                        <span>{filter.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </details>
               </div>
             </div>
           </div>
@@ -668,25 +704,24 @@ const Home = () => {
               )}
             </div>
             
-            {/* Controles de Filtro e Ordenação */}
+            {/* Controles de Filtro e Ordenação - Simplificados */}
             <div className="flex flex-col sm:flex-row gap-3 mt-4 sm:mt-0">
-              {/* Filtros */}
-              <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
+              {/* Filtros - Reduzidos */}
+              <div className="flex items-center space-x-2">
                 <span className="text-xs sm:text-sm font-medium text-neutral-700 dark:text-neutral-300">Filtrar:</span>
-                <div className="flex flex-wrap gap-1">
+                <div className="flex gap-1">
                   {[
-                    { value: 'all', label: 'Todas' },
-                    { value: 'favorites', label: 'Favoritas' },
-                    { value: 'custom', label: 'Personalizadas' },
-                    { value: 'recent', label: 'Recentes' }
+                    { value: 'all', label: 'Todas', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300' },
+                    { value: 'favorites', label: 'Favoritas', color: 'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-300' },
+                    { value: 'custom', label: 'Personalizadas', color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/20 dark:text-purple-300' }
                   ].map(filter => (
                     <button
                       key={filter.value}
                       onClick={() => setSavedQuotesFilter(filter.value as any)}
                       className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${
                         savedQuotesFilter === filter.value
-                          ? 'bg-primary-600 text-white scale-105'
-                          : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-600 hover:scale-105'
+                          ? `${filter.color} scale-105`
+                          : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-600'
                       }`}
                     >
                       {filter.label}
@@ -695,8 +730,8 @@ const Home = () => {
                 </div>
               </div>
 
-              {/* Ordenação */}
-              <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
+              {/* Ordenação - Simplificada */}
+              <div className="flex items-center space-x-2">
                 <span className="text-xs sm:text-sm font-medium text-neutral-700 dark:text-neutral-300">Ordenar:</span>
                 <select
                   value={savedQuotesSort}
@@ -717,81 +752,62 @@ const Home = () => {
                 </button>
               </div>
 
-              {/* Limpar Duplicações */}
-              <div className="flex items-center space-x-2">
-                <button
-                  onClick={async () => {
-                    if (confirm('Tem certeza que quer remover todas as duplicações? Esta ação não pode ser desfeita.')) {
-                      try {
-                        await removeDuplicates()
-                        alert('Duplicações removidas com sucesso!')
-                      } catch (error) {
-                        alert('Erro ao remover duplicações: ' + error)
+              {/* Ferramentas - Ocultas por padrão */}
+              <details className="group">
+                <summary className="cursor-pointer text-xs font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 transition-colors">
+                  Ferramentas
+                </summary>
+                <div className="mt-2 flex flex-wrap gap-1">
+                  <button
+                    onClick={async () => {
+                      if (confirm('Tem certeza que quer remover todas as duplicações? Esta ação não pode ser desfeita.')) {
+                        try {
+                          await removeDuplicates()
+                          alert('Duplicações removidas com sucesso!')
+                        } catch (error) {
+                          alert('Erro ao remover duplicações: ' + error)
+                        }
                       }
-                    }
-                  }}
-                  className="px-3 py-1.5 text-xs bg-yellow-100 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-300 rounded-lg hover:bg-yellow-200 dark:hover:bg-yellow-800/30 transition-all duration-200"
-                  title="Remover citações duplicadas"
-                >
-                  Limpar Duplicações
-                </button>
+                    }}
+                    className="px-2 py-1 text-xs bg-yellow-100 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-300 rounded hover:bg-yellow-200 dark:hover:bg-yellow-800/30 transition-all duration-200"
+                    title="Remover citações duplicadas"
+                  >
+                    Limpar Duplicações
+                  </button>
 
-                {/* Validar e Corrigir */}
-                <button
-                  onClick={() => {
-                    alert('Funcionalidade de validar citações será implementada em breve.')
-                  }}
-                  className="px-3 py-1.5 text-xs bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-800/30 transition-all duration-200"
-                  title="Validar e corrigir citações"
-                >
-                  Validar Citações
-                </button>
-
-                {/* Recuperação de Emergência */}
-                <button
-                  onClick={() => {
-                    alert('Funcionalidade de recuperar backup será implementada em breve.')
-                  }}
-                  className="px-3 py-1.5 text-xs bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-300 rounded-lg hover:bg-red-200 dark:hover:bg-red-800/30 transition-all duration-200"
-                  title="Tentar recuperar de backup"
-                >
-                  Recuperar Backup
-                </button>
-
-                {/* Corrigir Favoritas */}
-                <button
-                  onClick={async () => {
-                    try {
-                      await fixFavoriteStatus()
-                      alert('Status das favoritas corrigido com sucesso!')
-                    } catch (error) {
-                      alert('Erro ao corrigir favoritas: ' + error)
-                    }
-                  }}
-                  className="px-3 py-1.5 text-xs bg-purple-100 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 rounded-lg hover:bg-purple-200 dark:hover:bg-purple-800/30 transition-all duration-200"
-                  title="Corrigir status das favoritas após migração"
-                >
-                  Corrigir Favoritas
-                </button>
-
-                {/* Resetar Favoritas */}
-                <button
-                  onClick={async () => {
-                    if (confirm('Tem certeza que quer desmarcar TODAS as favoritas? Esta ação não pode ser desfeita.')) {
+                  <button
+                    onClick={async () => {
                       try {
-                        await resetAllFavorites()
-                        alert('Todas as favoritas foram desmarcadas!')
+                        await fixFavoriteStatus()
+                        alert('Status das favoritas corrigido com sucesso!')
                       } catch (error) {
-                        alert('Erro ao resetar favoritas: ' + error)
+                        alert('Erro ao corrigir favoritas: ' + error)
                       }
-                    }
-                  }}
-                  className="px-3 py-1.5 text-xs bg-orange-100 dark:bg-orange-900/20 text-orange-700 dark:text-orange-300 rounded-lg hover:bg-orange-200 dark:hover:bg-orange-800/30 transition-all duration-200"
-                  title="Desmarcar todas as favoritas"
-                >
-                  Resetar Favoritas
-                </button>
-              </div>
+                    }}
+                    className="px-2 py-1 text-xs bg-purple-100 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 rounded hover:bg-purple-200 dark:hover:bg-purple-800/30 transition-all duration-200"
+                    title="Corrigir status das favoritas após migração"
+                  >
+                    Corrigir Favoritas
+                  </button>
+
+                  <button
+                    onClick={async () => {
+                      if (confirm('Tem certeza que quer desmarcar TODAS as favoritas? Esta ação não pode ser desfeita.')) {
+                        try {
+                          await resetAllFavorites()
+                          alert('Todas as favoritas foram desmarcadas!')
+                        } catch (error) {
+                          alert('Erro ao resetar favoritas: ' + error)
+                        }
+                      }
+                    }}
+                    className="px-2 py-1 text-xs bg-orange-100 dark:bg-orange-900/20 text-orange-700 dark:text-orange-300 rounded hover:bg-orange-200 dark:hover:bg-orange-800/30 transition-all duration-200"
+                    title="Desmarcar todas as favoritas"
+                  >
+                    Resetar Favoritas
+                  </button>
+                </div>
+              </details>
             </div>
           </div>
           
